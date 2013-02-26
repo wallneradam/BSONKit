@@ -37,15 +37,15 @@ BSON types are converted into Objective-C types according to the table below:
 
 The interface for performing the decoding is very simple:
 
-	```objective-c
-	// Get a decoder instance
-	+ (id)decoder;
-	// Start decoding a BSON byte array
-	- (id)decode:(NSData*)source withError:(NSError**)error;
-	```
+```objective-c
+// Get a decoder instance
++ (id)decoder;
+// Start decoding a BSON byte array
+- (id)decode:(NSData*)source withError:(NSError**)error;
+```
 
 There is also a convenience NSData category:
-	```objective-c
-	// Decoding a BSON byte array
-	- (id)decodeBSONWithError:(NSError**)error;
-	```
+```objective-c
+// Decoding a BSON byte array
+- (id)decodeBSONWithError:(NSError**)error;
+```
