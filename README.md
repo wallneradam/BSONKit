@@ -1,6 +1,11 @@
 #BSONKit
 
-The BSONDecoder is an Objective-C framework for decoding binary JSON according to the BSON specification http://bsonspec.org
+The BSONKit is an Objective-C framework for decoding binary JSON according to the BSON specification http://bsonspec.org
+
+This is a modification of the original BSONKit created by Mattias Levin: https://github.com/mattiaslevin/BSONKit
+I made a lot of bug fixes and cleanups. This is tested on iOS, but should work on Os-X as well.
+
+It doesn't use ARC, but could be easily converted to use it.
  
 ####Type conversion rules
 
@@ -32,12 +37,15 @@ BSON types are converted into Objective-C types according to the table below:
 
 The interface for performing the decoding is very simple:
 
+	```objective-c
 	// Get a decoder instance
 	+ (id)decoder;
 	// Start decoding a BSON byte array
 	- (id)decode:(NSData*)source withError:(NSError**)error;
+	```
 
 There is also a convenience NSData category:
-
+	```objective-c
 	// Decoding a BSON byte array
 	- (id)decodeBSONWithError:(NSError**)error;
+	```

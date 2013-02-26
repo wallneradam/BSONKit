@@ -6,8 +6,11 @@
 //  Copyright (c) 2012 Wadpam. All rights reserved.
 //
 
-#import <SenTestingKit/SenTestingKit.h>
+#import <Foundation/Foundation.h>
 
-@interface BSONKitTests : SenTestCase
+@interface BSONKitTests : NSObject
+
+- (void)testDecodeInteger32;
+- (void)testDecodeInteger64;
 
 @end
