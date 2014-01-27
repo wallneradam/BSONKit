@@ -430,9 +430,9 @@
     pByte += sizeof(Byte);
     
     if (value == 0x00)
-        return YES;
-    else if (value == 0x01)
         return NO;
+    else if (value == 0x01)
+        return YES;
     else {
         // Invalid value, report error and stop
         *error = [self parsingErrorWithDescription:@"Unsupported boolean value 0x%x", value];
