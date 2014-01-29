@@ -11,31 +11,32 @@
 
 
 @interface AFBSONRequestOperation ()
-@property (readwrite, nonatomic, strong) id responseBSON;
-@property (readwrite, nonatomic, strong) NSError *BSONError;
+
+@property(readwrite, nonatomic, strong) id responseBSON;
+@property(readwrite, nonatomic, strong) NSError *BSONError;
 @end
 
 
 @implementation AFBSONRequestOperation
 
-@synthesize responseBSON = _responseBSON, BSONError = _BSONError;
+@synthesize BSONError = _BSONError;
 
 
-+ (instancetype)BSONRequestOperationWithRequest:(NSURLRequest *)urlRequest
-										success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id data))success
-										failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure
-{
-    AFBSONRequestOperation *requestOperation = [(AFBSONRequestOperation *)[self alloc] initWithRequest:urlRequest];
++ (AFBSONRequestOperation *)BSONRequestOperationWithRequest:(NSURLRequest *)urlRequest
+                                        success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id data))success
+                                        failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure NS_RETURNS_RETAINED  NS_RETURNS_RETAINED {
+    AFBSONRequestOperation *requestOperation = [[AFBSONRequestOperation alloc] initWithRequest:urlRequest];
     [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
         if (success) {
             success(operation.request, operation.response, responseObject);
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
         if (failure) {
-            failure(operation.request, operation.response, error, [(AFBSONRequestOperation *)operation responseBSON]);
+            failure(operation.request, operation.response, error, [(AFBSONRequestOperation *) operation responseBSON]);
         }
     }];
-    
+
+    [requestOperation release];
     return requestOperation;
 }
 
@@ -50,7 +51,7 @@
         }
         self.BSONError = error;
     }
-    
+
     return _responseBSON;
 }
 
@@ -71,18 +72,17 @@
 }
 
 - (void)setCompletionBlockWithSuccess:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
-                              failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
-{
+                              failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure {
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-retain-cycles"
-    self.completionBlock = ^ {
+#pragma clang diagnostic ignored "-Wreturn-stack-address"
+    self.completionBlock = ^{
         if (self.error) {
             if (failure) {
                 failure(self, self.error);
             }
         } else {
             id BSON = self.responseBSON;
-            
+
             if (self.BSONError) {
                 if (failure) {
                     failure(self, self.error);

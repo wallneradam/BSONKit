@@ -40,18 +40,18 @@
 
 - (BOOL)decodeNextElementWithCompletionBlock:(void (^)(id eventName, id elementValue))block error:(NSError**)error;
 
-- (NSString*)decodeElementNameWithError:(NSError**)error;
-- (NSString*)decodeUTF8StringWithError:(NSError**)error;
+- (NSString *)decodeElementName;
+- (NSString *)decodeUTF8String;
 - (NSDictionary*)decodeDocumentWithError:(NSError**)error;
 - (NSArray*)decodeArrayWithError:(NSError**)error;
 - (NSData*)decodeBinayWithError:(NSError**)error;
-- (double)decodeDoubleWithError:(NSError**)error;
-- (NSData*)decodeObjectIdWithError:(NSError**)error;
-- (NSArray*)decodeRegularExpressionWithError:(NSError**)error;
-- (id)decodeDBPointerWithError:(NSError**)error;
+- (double)decodeDouble;
+- (NSData *)decodeObjectId;
+- (NSArray *)decodeRegularExpression;
+- (id)decodeDBPointer;
 - (BOOL)decodeBooleanWithError:(NSError**)error;
-- (int32_t)decodeInt32WithError:(NSError**)error;
-- (int64_t)decodeInt64WithError:(NSError**)error;
+- (int32_t)decodeInt32;
+- (int64_t)decodeInt64;
 
 - (NSError*)parsingErrorWithDescription:(NSString*)format, ...;
 
@@ -91,26 +91,17 @@
 }
 
 
-// Decode a 32-bit integer without incrementing byte pointer
-- (int32_t)decodeLengthWithError:(NSError**)error {
-    int32_t int32;
-    memcpy(&int32, pByte, sizeof(int32_t));
-    return int32;
-}
-
-
-
 // Decode next element in the byte array
 - (BOOL)decodeNextElementWithCompletionBlock:(void (^)(id eventName, id elementValue))block error:(NSError**)error {
     
-    Byte elementType = *pByte;
+    Byte elementType = (Byte) *pByte;
     DLOG(@"Decode element type 0x%x", elementType);
     
     // Move the current byte pointer forward
     pByte += sizeof(Byte);
     
     // Skip ahead and get the element name, it will always be a name parameter regardless of element type
-    NSString *elementName = [self decodeElementNameWithError:error];
+    NSString *elementName = [self decodeElementName];
     
     // Hold the element value
     id elementValue = nil;
@@ -119,11 +110,11 @@
     switch (elementType) {
         case 0x01:
             // Double
-            elementValue = [NSNumber numberWithDouble:[self decodeDoubleWithError:error]];
+            elementValue = [NSNumber numberWithDouble:[self decodeDouble]];
             break;
         case 0x02:
             // UTF-8 string
-            elementValue = [self decodeUTF8StringWithError:error];
+            elementValue = [self decodeUTF8String];
             break;
         case 0x03:
             // Embedded document
@@ -147,7 +138,7 @@
             break;
         case 0x07:
             // ObjectId
-            elementValue = [self decodeObjectIdWithError:error];
+            elementValue = [self decodeObjectId];
             break;
         case 0x08:
             // Boolean
@@ -156,7 +147,7 @@
         case 0x09:
             // UTC Datetime, UTC milleseconds since Unix epoch
             // Decode the same way as a int64
-            elementValue  = [NSNumber numberWithLongLong:[self decodeInt64WithError:error]];
+            elementValue  = [NSNumber numberWithLongLong:[self decodeInt64]];
             break;
         case 0x0A:
             // Nil (Null)
@@ -164,22 +155,22 @@
             break;
         case 0x0B:
             // Regular expression
-            elementValue = [self decodeRegularExpressionWithError:error];
+            elementValue = [self decodeRegularExpression];
             break;
         case 0x0C:
             // DBPointer - Depricated, do nothing
             // Move the current byte pointer forwards as musch as the element value
-            elementValue = [self decodeDBPointerWithError:error]; // Will always return nil
+            elementValue = [self decodeDBPointer]; // Will always return nil
             break;
         case 0x0D:
             // JavaScript Code
             // Decode it the same way as a string
-            elementValue = [self decodeUTF8StringWithError:error];
+            elementValue = [self decodeUTF8String];
             break;
         case 0x0E:
             // Symbol.
             // Not really supported in Objective-C. Decode it the same way as a string
-            elementValue = [self decodeUTF8StringWithError:error];
+            elementValue = [self decodeUTF8String];
             break;
         case 0x0F:
             // JavaScript Code with scope
@@ -188,17 +179,17 @@
             break;
         case 0x10:
             // 32-bit integer
-            elementValue  = [NSNumber numberWithInteger:[self decodeInt32WithError:error]];
+            elementValue  = [NSNumber numberWithInteger:[self decodeInt32]];
             break;
         case 0x11:
             // Timestamp
             // Decode the same way as a int64 but the content has special meaning for MongoDB replication and sharding.
             // Just decode and let higher layers handle any internal symantic
-            elementValue  = [NSNumber numberWithLongLong:[self decodeInt64WithError:error]];
+            elementValue  = [NSNumber numberWithLongLong:[self decodeInt64]];
             break;
         case 0x12:
             // 64-bit integer
-            elementValue  = [NSNumber numberWithLongLong:[self decodeInt64WithError:error]];
+            elementValue  = [NSNumber numberWithLongLong:[self decodeInt64]];
             break;
         case 0xFF:
             // Min Key
@@ -234,7 +225,7 @@
 
 
 // Get the elemenet name, C string
-- (NSString*)decodeElementNameWithError:(NSError**)error {
+- (NSString *)decodeElementName {
     NSString *elementName = [NSString stringWithCString:pByte encoding:NSASCIIStringEncoding];
     // Move the current byte pointer forward
     pByte += [elementName length] + 1; // + 1 to get rid of the ending 0x00
@@ -243,14 +234,14 @@
 
 
 // Decode a UTF-8 String
-- (NSString*)decodeUTF8StringWithError:(NSError**)error {
+- (NSString *)decodeUTF8String {
     
     // The first 4 bytes (int32) contains the total length of the string (including the 0x00 end char)
-    int32_t length = [self decodeInt32WithError:error];
+    int32_t length = [self decodeInt32];
     
     // Read the string
     NSString *string = [[[NSString alloc] initWithBytes:pByte
-                                                 length:length - 1
+                                                 length:(NSUInteger) (length - 1)
                                                encoding:NSUTF8StringEncoding] autorelease];
     
     // Move the current byte pointer forward
@@ -266,7 +257,7 @@
     char *pStart = pByte;
     
     // The first 4 bytes (int32) contains the total length of the array document
-    int32_t size = [self decodeInt32WithError:error];
+    int32_t size = [self decodeInt32];
     
     // Set up the result dictionary
     NSMutableDictionary *result = [NSMutableDictionary dictionary];
@@ -298,7 +289,7 @@
     char *pStart = pByte;
     
     // The first 4 bytes (int32) contains the total length of the array document
-    int32_t size = [self decodeInt32WithError:error];
+    int32_t size = [self decodeInt32];
     
     // Set up the result Array
     NSMutableArray *result = [NSMutableArray array];
@@ -327,10 +318,10 @@
 - (NSData*)decodeBinayWithError:(NSError**)error {
     
     // The first 4 bytes (int32) contains the total length of the binary data
-    int32_t size = [self decodeInt32WithError:error];
+    int32_t size = [self decodeInt32];
     
     // The next byte tells us the type of the binary
-    Byte binaryType = *pByte;
+    Byte binaryType = (Byte) *pByte;
     DLOG(@"Binary type 0x%x", binaryType);
     
     // Move the current byte pointer forward
@@ -347,13 +338,13 @@
         case 0x80: // User defined
             // All these types are decoded in the same way.
             // Let the higher layer add any logic based on the type
-            binary = [NSData dataWithBytes:pByte length:size];
+            binary = [NSData dataWithBytes:pByte length:(NSUInteger) size];
             break;
         case 0x02: // Old binary
             // Old binary format that should no longer be used
             // The next 4 bytes is the size of the binary
-            size = [self decodeInt32WithError:error];
-            binary = [NSData dataWithBytes:pByte length:size];
+            size = [self decodeInt32];
+            binary = [NSData dataWithBytes:pByte length:(NSUInteger) size];
             break;
         default:
             // Unknown binary type
@@ -368,9 +359,8 @@
 }
 
 
-
 // Decode a double, 8 bytes (64-bit IEEE 754 floating point)
-- (double)decodeDoubleWithError:(NSError**)error {
+- (double)decodeDouble {
     double_t double64;
     memcpy(&double64, pByte, sizeof(double_t));
     // Move the current byte pointer forward
@@ -380,7 +370,7 @@
 
 
 // Decode a regular expression
-- (NSArray*)decodeRegularExpressionWithError:(NSError**)error {
+- (NSArray *)decodeRegularExpression {
     
     // Get the first C string, the regex pattern
     NSString *regexPattern = [NSString stringWithCString:pByte
@@ -400,10 +390,10 @@
 
 // Decode a DBPointer
 // This is deprecated but we need to move the current pointer forward to throw away any element values
-- (id)decodeDBPointerWithError:(NSError**)error {
+- (id)decodeDBPointer {
     
     // First skip head the string value
-    [self decodeUTF8StringWithError:error];
+    [self decodeUTF8String];
     
     // Then jump 12 bytes ahead
     pByte += 12;
@@ -413,9 +403,8 @@
 }
 
 
-
 // Decode object id. This is a unqique identifier user by MongoBD. Just decode and let higer layer handle it
-- (NSData*)decodeObjectIdWithError:(NSError**)error {
+- (NSData *)decodeObjectId {
     NSData *objectId = [NSData dataWithBytes:pByte length:12];
     // Move the current byte pointer forward
     pByte += 12;
@@ -425,7 +414,7 @@
 
 // Decode a boolean value
 - (BOOL)decodeBooleanWithError:(NSError**)error {
-    Byte value = *pByte;
+    Byte value = (Byte) *pByte;
     // Move the current byte pointer forward
     pByte += sizeof(Byte);
     
@@ -442,7 +431,7 @@
 
 
 // Decode a 32-bit integer
-- (int32_t)decodeInt32WithError:(NSError**)error {
+- (int32_t)decodeInt32 {
     int32_t int32;
     memcpy(&int32, pByte, sizeof(int32_t));
     // Move the current byte pointer forward
@@ -452,7 +441,7 @@
 
 
 // Decode a 64-bit integer
-- (int64_t)decodeInt64WithError:(NSError**)error {  
+- (int64_t)decodeInt64 {
     int64_t int64;
     memcpy(&int64, pByte, sizeof(int64_t));
     // Move the current byte pointer forward

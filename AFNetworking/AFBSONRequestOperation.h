@@ -14,7 +14,7 @@
 
 + (instancetype)BSONRequestOperationWithRequest:(NSURLRequest *)urlRequest
 										success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id data))success
-										failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure;
+										failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure NS_RETURNS_RETAINED  NS_RETURNS_RETAINED;
 
 
 @end
