@@ -7,7 +7,6 @@
 //  Copyright (c) 2013 Bitbaro Mobile Kft. All rights reserved.
 //
 
-#import <objc/runtime.h>
 #import "BSONDecoder.h"
 
 
@@ -120,20 +119,20 @@ static BSONNull *null = nil;
     char *pByte;
 }
 
-- (BOOL)decodeNextElementWithCompletionBlock:(void (^)(id eventName, id elementValue))block error:(NSError **)error;
+BOOL decodeNextElementWithCompletionBlock(BSONDecoder *_self, void (^block)(id, id), NSError **error);
 
-- (NSString *)decodeElementName;
-- (NSString *)decodeUTF8String;
-- (NSDictionary *)decodeDocumentWithError:(NSError **)error;
-- (NSArray *)decodeArrayWithError:(NSError **)error;
-- (NSData *)decodeBinayWithError:(NSError **)error;
-- (double)decodeDouble;
-- (NSData *)decodeObjectId;
-- (NSArray *)decodeRegularExpression;
-- (id)decodeDBPointer;
-- (BOOL)decodeBooleanWithError:(NSError **)error;
-- (int32_t)decodeInt32;
-- (int64_t)decodeInt64;
+NSString *decodeElementName(BSONDecoder *_self);
+NSString *decodeUTF8String(BSONDecoder * _self);
+NSDictionary *decodeDocumentWithError(BSONDecoder * _self, NSError * *error);
+NSArray *decodeArrayWithError(BSONDecoder * _self, NSError * *error);
+NSData *decodeBinayWithError(BSONDecoder * _self, NSError * *error);
+double decodeDouble(BSONDecoder * _self);
+NSData *decodeObjectId(BSONDecoder * _self);
+NSArray *decodeRegularExpression(BSONDecoder * _self);
+id decodeDBPointer(BSONDecoder * _self);
+BOOL decodeBooleanWithError(BSONDecoder * _self, NSError * *error);
+int32_t decodeInt32(BSONDecoder * _self);
+int64_t decodeInt64(BSONDecoder * _self);
 
 - (NSError *)parsingErrorWithDescription:(NSString *)format, ...;
 
@@ -163,21 +162,20 @@ static BSONNull *null = nil;
     pByte = (char *) [source bytes];
 
     // Start decoding the document
-    return [self decodeDocumentWithError:error];
+    return decodeDocumentWithError(self, error);
 }
 
 
 // Decode next element in the byte array
-- (BOOL)decodeNextElementWithCompletionBlock:(void (^)(id eventName, id elementValue))block error:(NSError **)error {
-
-    Byte elementType = (Byte) *pByte;
+inline BOOL decodeNextElementWithCompletionBlock(BSONDecoder *_self, void (^block)(id, id), NSError **error) {
+    Byte elementType = (Byte) *_self->pByte;
     DLOG(@"Decode element type 0x%x", elementType);
 
     // Move the current byte pointer forward
-    pByte += sizeof(Byte);
+    _self->pByte += sizeof(Byte);
 
     // Skip ahead and get the element name, it will always be a name parameter regardless of element type
-    NSString *elementName = [self decodeElementName];
+    NSString *elementName = decodeElementName(_self);
 
     // Hold the element value
     id elementValue = nil;
@@ -186,27 +184,27 @@ static BSONNull *null = nil;
     switch (elementType) {
         case 0x01:
             // Double
-            elementValue = [NSNumber numberWithDouble:[self decodeDouble]];
+            elementValue = [NSNumber numberWithDouble:decodeDouble(_self)];
             break;
         case 0x02:
             // UTF-8 string
-            elementValue = [self decodeUTF8String];
+            elementValue = decodeUTF8String(_self);
             break;
         case 0x03:
             // Embedded document
-            elementValue = [self decodeDocumentWithError:error];
+            elementValue = decodeDocumentWithError(_self, error);
             // Embedded documents are ended with 0x00
-            pByte++;
+            _self->pByte++;
             break;
         case 0x04:
             // Array
-            elementValue = [self decodeArrayWithError:error];
+            elementValue = decodeArrayWithError(_self, error);
             // Array objects are alse documents ended with 0x00
-            pByte++;
+            _self->pByte++;
             break;
         case 0x05:
             // Binary data
-            elementValue = [self decodeBinayWithError:error];
+            elementValue = decodeBinayWithError(_self, error);
             break;
         case 0x06:
             // Unidentified - Depricated, do nothing
@@ -214,16 +212,16 @@ static BSONNull *null = nil;
             break;
         case 0x07:
             // ObjectId
-            elementValue = [self decodeObjectId];
+            elementValue = decodeObjectId(_self);
             break;
         case 0x08:
             // Boolean
-            elementValue = [NSNumber numberWithBool:[self decodeBooleanWithError:error]];
+            elementValue = [NSNumber numberWithBool:decodeBooleanWithError(_self, error)];
             break;
         case 0x09:
             // UTC Datetime, UTC milleseconds since Unix epoch
             // Decode the same way as a int64
-            elementValue = [NSNumber numberWithLongLong:[self decodeInt64]];
+            elementValue = [NSNumber numberWithLongLong:decodeInt64(_self)];
             break;
         case 0x0A:
             // Nil (Null)
@@ -231,22 +229,22 @@ static BSONNull *null = nil;
             break;
         case 0x0B:
             // Regular expression
-            elementValue = [self decodeRegularExpression];
+            elementValue = decodeRegularExpression(_self);
             break;
         case 0x0C:
             // DBPointer - Depricated, do nothing
             // Move the current byte pointer forwards as musch as the element value
-            elementValue = [self decodeDBPointer]; // Will always return nil
+            elementValue = decodeDBPointer(_self); // Will always return nil
             break;
         case 0x0D:
             // JavaScript Code
             // Decode it the same way as a string
-            elementValue = [self decodeUTF8String];
+            elementValue = decodeUTF8String(_self);
             break;
         case 0x0E:
             // Symbol.
             // Not really supported in Objective-C. Decode it the same way as a string
-            elementValue = [self decodeUTF8String];
+            elementValue = decodeUTF8String(_self);
             break;
         case 0x0F:
             // JavaScript Code with scope
@@ -255,17 +253,17 @@ static BSONNull *null = nil;
             break;
         case 0x10:
             // 32-bit integer
-            elementValue = [NSNumber numberWithInteger:[self decodeInt32]];
+            elementValue = [NSNumber numberWithInteger:decodeInt32(_self)];
             break;
         case 0x11:
             // Timestamp
             // Decode the same way as a int64 but the content has special meaning for MongoDB replication and sharding.
             // Just decode and let higher layers handle any internal symantic
-            elementValue = [NSNumber numberWithLongLong:[self decodeInt64]];
+            elementValue = [NSNumber numberWithLongLong:decodeInt64(_self)];
             break;
         case 0x12:
             // 64-bit integer
-            elementValue = [NSNumber numberWithLongLong:[self decodeInt64]];
+            elementValue = [NSNumber numberWithLongLong:decodeInt64(_self)];
             break;
         case 0xFF:
             // Min Key
@@ -279,7 +277,7 @@ static BSONNull *null = nil;
             break;
         default:
             // Unsupported element type
-            *error = [self parsingErrorWithDescription:@"Unsupported element type 0x%x", elementType];
+            *error = [_self parsingErrorWithDescription:@"Unsupported element type 0x%x", elementType];
             break;
     }
 
@@ -301,50 +299,50 @@ static BSONNull *null = nil;
 
 
 // Get the elemenet name, C string
-- (NSString *)decodeElementName {
-    NSString *elementName = [NSString stringWithCString:pByte encoding:NSASCIIStringEncoding];
+inline NSString *decodeElementName(BSONDecoder *_self) {
+    NSString *elementName = [NSString stringWithCString:_self->pByte encoding:NSASCIIStringEncoding];
     // Move the current byte pointer forward
-    pByte += [elementName length] + 1; // + 1 to get rid of the ending 0x00
+    _self->pByte += [elementName length] + 1; // + 1 to get rid of the ending 0x00
     return elementName;
 }
 
 
 // Decode a UTF-8 String
-- (NSString *)decodeUTF8String {
+inline NSString *decodeUTF8String(BSONDecoder *_self) {
 
     // The first 4 bytes (int32) contains the total length of the string (including the 0x00 end char)
-    int32_t length = [self decodeInt32];
+    int32_t length = decodeInt32(_self);
 
     // Read the string
-    NSString *string = [[[NSString alloc] initWithBytes:pByte
+    NSString *string = [[[NSString alloc] initWithBytes:_self->pByte
                                                  length:(NSUInteger) (length - 1)
                                                encoding:NSUTF8StringEncoding] autorelease];
 
     // Move the current byte pointer forward
-    pByte += length;
+    _self->pByte += length;
 
     return string;
 }
 
 
 // Docode a document
-- (NSDictionary *)decodeDocumentWithError:(NSError **)error {
+inline NSDictionary *decodeDocumentWithError(BSONDecoder *_self, NSError **error) {
     // BSON subdocument is the same as document
-    char *pStart = pByte;
+    char *pStart = _self->pByte;
 
     // The first 4 bytes (int32) contains the total length of the document
-    int32_t size = [self decodeInt32];
+    int32_t size = decodeInt32(_self);
 
     // Set up the result dictionary
     NSMutableDictionary *result = [NSMutableDictionary dictionary];
 
     // Continue decoding next element until we reach the end or get an error
     BOOL success = YES;
-    while (success && (size - (pByte - pStart) > 1)) {
-        success = [self decodeNextElementWithCompletionBlock:^(id elementName, id elementValue) {
-            // Set the element value for the name
-            [result setObject:elementValue forKey:elementName];
-        } error:error];
+    while (success && (size - (_self->pByte - pStart) > 1)) {
+        success = decodeNextElementWithCompletionBlock(_self, ^(id elementName, id elementValue) {
+                    // Set the element value for the name
+                    [result setObject:elementValue forKey:elementName];
+                }, error);
     }
 
     if (success)
@@ -357,23 +355,23 @@ static BSONNull *null = nil;
 
 
 // Decode array
-- (NSArray *)decodeArrayWithError:(NSError **)error {
+inline NSArray *decodeArrayWithError(BSONDecoder *_self, NSError **error) {
     // An BSON array is like a BSON document but you ignore the element names, only add the element values to the array
-    char *pStart = pByte;
+    char *pStart = _self->pByte;
 
     // The first 4 bytes (int32) contains the total length of the array document
-    int32_t size = [self decodeInt32];
+    int32_t size = decodeInt32(_self);
 
     // Set up the result Array
     NSMutableArray *result = [NSMutableArray array];
 
     // Continue decoding next element until we reach the end or get an error
     BOOL success = YES;
-    while (success && (size - (pByte - pStart) > 1)) {
-        success = [self decodeNextElementWithCompletionBlock:^(id elementName, id elementValue) {
-            // Since it is an array only save the value
-            [result addObject:elementValue];
-        } error:error];
+    while (success && (size - (_self->pByte - pStart) > 1)) {
+        success = decodeNextElementWithCompletionBlock(_self, ^(id elementName, id elementValue) {
+                    // Since it is an array only save the value
+                    [result addObject:elementValue];
+                }, error);
     }
 
     if (success)
@@ -386,17 +384,17 @@ static BSONNull *null = nil;
 
 
 // Decode binary data
-- (NSData *)decodeBinayWithError:(NSError **)error {
+inline NSData *decodeBinayWithError(BSONDecoder *_self, NSError **error) {
 
     // The first 4 bytes (int32) contains the total length of the binary data
-    int32_t size = [self decodeInt32];
+    int32_t size = decodeInt32(_self);
 
     // The next byte tells us the type of the binary
-    Byte binaryType = (Byte) *pByte;
+    Byte binaryType = (Byte) *_self->pByte;
     DLOG(@"Binary type 0x%x", binaryType);
 
     // Move the current byte pointer forward
-    pByte += sizeof(Byte);
+    _self->pByte += sizeof(Byte);
 
     // Hold the result
     NSData *binary = nil;
@@ -409,52 +407,52 @@ static BSONNull *null = nil;
         case 0x80: // User defined
             // All these types are decoded in the same way.
             // Let the higher layer add any logic based on the type
-            binary = [NSData dataWithBytes:pByte length:(NSUInteger) size];
+            binary = [NSData dataWithBytes:_self->pByte length:(NSUInteger) size];
             break;
         case 0x02: // Old binary
             // Old binary format that should no longer be used
             // The next 4 bytes is the size of the binary
-            size = [self decodeInt32];
-            binary = [NSData dataWithBytes:pByte length:(NSUInteger) size];
+            size = decodeInt32(_self);
+            binary = [NSData dataWithBytes:_self->pByte length:(NSUInteger) size];
             break;
         default:
             // Unknown binary type
             *error =
-                    [self parsingErrorWithDescription:@"Unsupported binary type 0x%x when decoding a binary array", binaryType];
+                    [_self parsingErrorWithDescription:@"Unsupported binary type 0x%x when decoding a binary array", binaryType];
             break;
     }
 
     // Move the current byte pointer forward
-    pByte += size;
+    _self->pByte += size;
 
     return binary;
 }
 
 
 // Decode a double, 8 bytes (64-bit IEEE 754 floating point)
-- (double)decodeDouble {
+inline double decodeDouble(BSONDecoder *_self) {
     double_t double64;
-    memcpy(&double64, pByte, sizeof(double_t));
+    memcpy(&double64, _self->pByte, sizeof(double_t));
     // Move the current byte pointer forward
-    pByte += sizeof(double_t);
+    _self->pByte += sizeof(double_t);
     return double64;
 }
 
 
 // Decode a regular expression
-- (NSArray *)decodeRegularExpression {
+inline NSArray *decodeRegularExpression(BSONDecoder *_self) {
 
     // Get the first C string, the regex pattern
-    NSString *regexPattern = [NSString stringWithCString:pByte
+    NSString *regexPattern = [NSString stringWithCString:_self->pByte
                                                 encoding:NSUTF8StringEncoding];
 
     // Get the second C string, the regex options
-    NSString *regexOptions = [NSString stringWithCString:pByte + [regexPattern length] + 1
+    NSString *regexOptions = [NSString stringWithCString:_self->pByte + [regexPattern length] + 1
                                                 encoding:NSUTF8StringEncoding];
 
 
     // Move the current byte pointer forward
-    pByte += [regexPattern length] + 1 + [regexOptions length] + 1;
+    _self->pByte += [regexPattern length] + 1 + [regexOptions length] + 1;
 
     return [NSArray arrayWithObjects:regexPattern, regexOptions, nil];
 }
@@ -462,33 +460,33 @@ static BSONNull *null = nil;
 
 // Decode a DBPointer
 // This is deprecated but we need to move the current pointer forward to throw away any element values
-- (id)decodeDBPointer {
+inline id decodeDBPointer(BSONDecoder *_self) {
 
     // First skip head the string value
-    [self decodeUTF8String];
+    decodeUTF8String(_self);
 
     // Then jump 12 bytes ahead
-    pByte += 12;
+    _self->pByte += 12;
 
     // Always return nil
     return nil;
 }
 
 
-// Decode object id. This is a unqique identifier user by MongoBD. Just decode and let higer layer handle it
-- (NSData *)decodeObjectId {
-    NSData *objectId = [NSData dataWithBytes:pByte length:12];
+// Decode object id. This is a unqique identifier used by MongoBD. Just decode and let higher layer handle it
+inline NSData *decodeObjectId(BSONDecoder *_self) {
+    NSData *objectId = [NSData dataWithBytes:_self->pByte length:12];
     // Move the current byte pointer forward
-    pByte += 12;
+    _self->pByte += 12;
     return objectId;
 }
 
 
 // Decode a boolean value
-- (BOOL)decodeBooleanWithError:(NSError **)error {
-    Byte value = (Byte) *pByte;
+inline BOOL decodeBooleanWithError(BSONDecoder *_self, NSError **error) {
+    Byte value = (Byte) *_self->pByte;
     // Move the current byte pointer forward
-    pByte += sizeof(Byte);
+    _self->pByte += sizeof(Byte);
 
     if (value == 0x00)
         return NO;
@@ -496,28 +494,28 @@ static BSONNull *null = nil;
         return YES;
     else {
         // Invalid value, report error and stop
-        *error = [self parsingErrorWithDescription:@"Unsupported boolean value 0x%x", value];
+        *error = [_self parsingErrorWithDescription:@"Unsupported boolean value 0x%x", value];
         return NO;
     }
 }
 
 
 // Decode a 32-bit integer
-- (int32_t)decodeInt32 {
+inline int32_t decodeInt32(BSONDecoder *_self) {
     int32_t int32;
-    memcpy(&int32, pByte, sizeof(int32_t));
+    memcpy(&int32, _self->pByte, sizeof(int32_t));
     // Move the current byte pointer forward
-    pByte += sizeof(int32_t);
+    _self->pByte += sizeof(int32_t);
     return int32;
 }
 
 
 // Decode a 64-bit integer
-- (int64_t)decodeInt64 {
+inline int64_t decodeInt64(BSONDecoder *_self) {
     int64_t int64;
-    memcpy(&int64, pByte, sizeof(int64_t));
+    memcpy(&int64, _self->pByte, sizeof(int64_t));
     // Move the current byte pointer forward
-    pByte += sizeof(int64_t);
+    _self->pByte += sizeof(int64_t);
     return int64;
 }
 

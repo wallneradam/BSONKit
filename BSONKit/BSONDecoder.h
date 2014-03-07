@@ -10,24 +10,6 @@
 
 
 /**
- * Usable NSNull for BSON results
- * To be able to use NSNull as NSString, NSNumber, NSArray
- */
-@interface BSONNull: NSNull
-
-+ (BSONNull *)null;
-- (NSInteger)integerValue;
-- (int)intValue;
-- (BOOL)boolValue;
-- (CGFloat)floatValue;
-- (NSNumber *)numberValue;
-- (NSString *)stringValue;
-- (NSInteger)count;
-
-@end
-
-
-/**
  The BSONDecoder is an Objective-C framework for decoding binary JSON according to the 
  BSON specification http://bsonspec.org
  
@@ -90,5 +72,23 @@
  */
 - (id)decodeBSONWithError:(NSError**)error;
 
+
+@end
+
+
+/**
+ * Usable NSNull for BSON results
+ * To be able to use NSNull as NSString, NSNumber, NSArray
+ */
+@interface BSONNull: NSNull
+
++ (BSONNull *)null;
+- (NSInteger)integerValue;
+- (int)intValue;
+- (BOOL)boolValue;
+- (CGFloat)floatValue;
+- (NSNumber *)numberValue;
+- (NSString *)stringValue;
+- (NSInteger)count;
 
 @end
