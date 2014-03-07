@@ -23,8 +23,9 @@
 
 
 + (AFBSONRequestOperation *)BSONRequestOperationWithRequest:(NSURLRequest *)urlRequest
-                                        success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id data))success
-                                        failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure NS_RETURNS_RETAINED  NS_RETURNS_RETAINED {
+                                                    success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id data))success
+                                                    failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure NS_RETURNS_RETAINED  NS_RETURNS_RETAINED {
+
     AFBSONRequestOperation *requestOperation = [[AFBSONRequestOperation alloc] initWithRequest:urlRequest];
     [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
         if (success) {
@@ -36,7 +37,7 @@
         }
     }];
 
-    [requestOperation release];
+    [requestOperation autorelease];
     return requestOperation;
 }
 
@@ -47,6 +48,7 @@
         if ([self.responseData length] == 0) {
             self.responseBSON = nil;
         } else {
+//            [self.responseData writeToFile:@"/tmp/responsedata.html" atomically:NO]; // Debug only!
             self.responseBSON = [self.responseData decodeBSONWithError:&error];
         }
         self.BSONError = error;
@@ -81,6 +83,7 @@
                 failure(self, self.error);
             }
         } else {
+
             id BSON = self.responseBSON;
 
             if (self.BSONError) {
