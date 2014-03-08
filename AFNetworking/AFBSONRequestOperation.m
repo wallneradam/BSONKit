@@ -14,6 +14,7 @@
 
 @property(readwrite, nonatomic, strong) id responseBSON;
 @property(readwrite, nonatomic, strong) NSError *BSONError;
+
 @end
 
 
@@ -24,21 +25,22 @@
 
 + (AFBSONRequestOperation *)BSONRequestOperationWithRequest:(NSURLRequest *)urlRequest
                                                     success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id data))success
-                                                    failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure NS_RETURNS_RETAINED  NS_RETURNS_RETAINED {
+                                                    failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure NS_RETURNS_RETAINED {
 
     AFBSONRequestOperation *requestOperation = [[AFBSONRequestOperation alloc] initWithRequest:urlRequest];
-    [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
-        if (success) {
-            success(operation.request, operation.response, responseObject);
-        }
-    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        if (failure) {
-            failure(operation.request, operation.response, error, [(AFBSONRequestOperation *) operation responseBSON]);
-        }
-    }];
+    if (success != nil || failure != nil) {
+        [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
+            if (success) {
+                success(operation.request, operation.response, responseObject);
+            }
+        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+            if (failure) {
+                failure(operation.request, operation.response, error, [(AFBSONRequestOperation *)operation responseData]);
+            }
+        }];
+    }
 
-    [requestOperation autorelease];
-    return requestOperation;
+    return [requestOperation autorelease];
 }
 
 
@@ -67,23 +69,14 @@
 }
 
 
-#pragma mark - AFHTTPRequestOperation
-
-+ (NSSet *)acceptableContentTypes {
-    return [NSSet setWithObjects:@"application/bson", nil];
-}
-
-- (void)setCompletionBlockWithSuccess:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
-                              failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-stack-address"
-    self.completionBlock = ^{
+- (void (^)(void))completionBlockWithSuccess:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
+                                     failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure {
+    return Block_copy(^{
         if (self.error) {
             if (failure) {
                 failure(self, self.error);
             }
         } else {
-
             id BSON = self.responseBSON;
 
             if (self.BSONError) {
@@ -96,9 +89,33 @@
                 }
             }
         }
-    };
-#pragma clang diagnostic pop
+    });
 }
 
+- (void)setCompletionBlockWithSuccess:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
+                              failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure {
+    self.completionBlock = [self completionBlockWithSuccess:success failure:failure ];
+}
+
+
+- (void)processResponseWithSuccess:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id data))success
+                           failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure {
+    [self completionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
+        if (success) {
+            success(operation.request, operation.response, responseObject);
+        }
+    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        if (failure) {
+            failure(operation.request, operation.response, error, [self responseData]);
+        }
+    }]();
+}
+
+
+#pragma mark - AFHTTPRequestOperation
+
++ (NSSet *)acceptableContentTypes {
+    return [NSSet setWithObjects:@"application/bson", nil];
+}
 
 @end

@@ -8,13 +8,19 @@
 
 #import "AFHTTPRequestOperation.h"
 
-@interface AFBSONRequestOperation : AFHTTPRequestOperation
+@interface AFBSONRequestOperation: AFHTTPRequestOperation
 
 @property (readonly, nonatomic, strong) id responseBSON;
 
+
+
 + (instancetype)BSONRequestOperationWithRequest:(NSURLRequest *)urlRequest
 										success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id data))success
-										failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure NS_RETURNS_RETAINED  NS_RETURNS_RETAINED;
+										failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure NS_RETURNS_RETAINED;
+
+
+- (void)processResponseWithSuccess:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id data))success
+                           failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id data))failure;
 
 
 @end
